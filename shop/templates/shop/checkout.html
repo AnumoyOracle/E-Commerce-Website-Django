@@ -1,0 +1,196 @@
+{% extends "shop/layout.html" %}
+{% block title %} Checkout - MyAwesomeCart {% endblock %}
+{% block body %}
+<div class="container">
+    <div class="col my-4">
+        <h2>Step 1 - My Awesome Cart Express Checkout - Review Your Cart Items</h2>
+        <div>
+            <ul class="list-group" id="items">
+
+            </ul>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mt-3">
+                    <li class="breadcrumb-item active" aria-current="page">Your Cart Total Is <b>Rs. <span
+                                id="totalPrice">0</b> </span>Enter your details below & place your order. Thanks for
+                        using My Awesome Cart!</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="col my-4">
+        <h2>Step 2 - Enter Address & Other Details:</h2>
+        <form action="/shop/checkout/" method="POST" id="checkoutForm">
+            {% csrf_token %}
+            <div class="form-row">
+                <input type="hidden" name="itemsJson" id="itemsJson" />
+                <input type="hidden" name="amount" id="amount">
+                <div class="form-group col-md-6">
+                    <label for="inputname">Name</label>
+                    <input type="name" name="name" class="form-control" id="name" placeholder="Name">
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="inputEmail4">Email</label>
+                    <input type="email" name="email" class="form-control" id="email" placeholder="Email">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="inputAddress">Address</label>
+                <input type="text" name="address" class="form-control" id="address" placeholder="1234 Main St">
+            </div>
+            <div class="form-group">
+                <label for="inputAddress2">Address line 2</label>
+                <input type="text" name="address2" class="form-control" id="inputAddress2"
+                    placeholder="Apartment, studio, or floor">
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="inputCity">City</label>
+                    <input type="text" name="city" class="form-control" id="city">
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="inputState">State</label>
+                    <input type="text" name="state" class="form-control" id="state" placeholder="Enter State">
+                </div>
+                <div class="form-group col-md-2">
+                    <label for="inputZip">Zip</label>
+                    <input type="text" name="zip_code" class="form-control" id="zip_code">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="inputZip">Phone Number</label>
+                <input type="tel" name="phone" class="form-control" id="phone">
+            </div>
+            <button type="submit" class="btn btn-primary">Place Order</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<script>
+    cart = {};
+
+    if (localStorage.getItem("cart") === null) {
+        cart = {};
+    }
+    else {
+        cart = JSON.parse(localStorage.getItem("cart"));
+    }
+
+    var myStr = ""
+
+    if ($.isEmptyObject(cart)) {
+        mystr = `<p>Your cart is empty, please add some items to your cart before checking out!</p>`
+        $('#items').append(mystr);
+    }
+    else {
+        let totalPriceSum = 0;
+        for (let item in cart) {
+            let name = productsMap[item]
+            let qty = cart[item]
+            totalPriceSum += qty * priceMap[item]
+            mystr = `<li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${name}
+                    <span class="badge badge-primary badge-pill">${qty}</span>
+                </li>`
+            $('#items').append(mystr);
+        }
+        $('#totalPrice').text(totalPriceSum)
+    }
+
+    $('#itemsJson').val(JSON.stringify(cart))
+    $('#amount').val($('#totalPrice').html())
+
+    $('#checkoutForm').submit(function (event) {
+        event.preventDefault();
+        var formData = {
+            'name': $('#name').val(),
+            'email': $('#email').val(),
+            'address': $('#address').val(),
+            'city': $('#city').val(),
+            'state': $('#state').val(),
+            'zip_code': $('#zip_code').val(),
+            'phone': $('#phone').val(),
+            'itemsJson': $('#itemsJson').val(),
+            'amount': $('#amount').val(),
+            'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+        };
+        $.ajax({
+            type: 'POST',
+            url: '/shop/checkout/',
+            data: formData,
+            encode: true
+        })
+            .done(function (data) {
+                data = JSON.parse(data);
+                let payment = data["payment"]
+                if (data["checkout_done"] !== null && data["checkout_done"] === true && payment !== null) {
+                    let orderId = data["order_id"]
+                    var options = {
+                        "key": "rzp_test_U9h78QlmdsdsasasJGYju2",
+                        "amount": payment["amount"],
+                        "currency": "INR",
+                        "name": "MyAwesomeCart",
+                        "description": "Test Transaction",
+                        "order_id": payment.id,
+                        "handler": function (response) {
+
+                            // Send payment ID to the server to update the order
+                            var paymentSuccessFormData = {
+                                'order_id': orderId,
+                                'payment_id': response.razorpay_payment_id,
+                                'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+                            };
+                            $.ajax({
+                                type: 'POST',
+                                url: '/shop/update-payment-status/',
+                                data: paymentSuccessFormData,
+                                encode: true
+                            })
+                                .done(function (information) {
+                                    information = JSON.parse(information);
+                                    if (information["status"] === "success") {
+                                        alert("Thank you for your order! Your order ID is ORDER_" + orderId + ". Use it to track your order using our order tracker");
+                                        clearCart();
+
+                                        $('#totalPrice').text(0)
+                                        $('#name').val('');
+                                        $('#email').val('');
+                                        $('#address').val('');
+                                        $('#address2').val('');
+                                        $('#city').val('');
+                                        $('#state').val('');
+                                        $('#zip_code').val('');
+                                        $('#phone').val('');
+                                        $('#itemsJson').val('');
+                                        $('#amount').val('')
+                                    }
+                                    else {
+                                        alert("There was an issue updating your payment status. Please contact support.");
+                                    }
+                                });
+                        },
+                        "prefill": {
+                            "name": $('#name').val(),
+                            "email": $('#email').val(),
+                            "contact": $('#phone').val()
+                        },
+                        "theme": {
+                            "color": "#F37254"
+                        }
+                    };
+
+                    var rzp1 = new Razorpay(options);
+                    rzp1.open();
+                }
+            });
+    });
+
+
+</script>
+
+{% endblock %}

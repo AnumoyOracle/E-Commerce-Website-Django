@@ -1,0 +1,53 @@
+{% extends 'blog/layout.html' %}
+
+{% block css %}
+.row {
+display: flex;
+flex-wrap: wrap;
+}
+
+.col-md-6 {
+display: flex;
+flex-direction: column;
+}
+
+.row .border {
+display: flex;
+flex-direction: row;
+height: 100%; /* Ensures the cards stretch to fill available height */
+}
+
+.bd-placeholder-img {
+object-fit: cover; /* Ensures the image covers the available space */
+height: 100%; /* Ensures the image takes the full height of the container */
+width: 100%; /* Ensures the image fills the width of its container */
+}
+
+{% endblock %}
+
+{% block body %}
+<div class="container">
+
+    <div class="row my-2">
+        {% for post in allPosts %}
+        <div class="col-md-6 d-flex align-items-stretch">
+            <div
+                class="row no-gutters border rounded overflow-hidden flex-md-row mb-4 shadow-sm h-md-250 position-relative">
+                <div class="col-md-8 p-4 d-flex flex-column position-static">
+                    <strong class="d-inline-block mb-2 text-success">{{ post.title }}</strong>
+                    <h3 class="mb-0">{{ post.head0 }}</h3>
+                    <div class="mb-1 text-muted">{{ post.pub_date }}</div>
+                    <p class="card-text mb-auto">{{ post.chead0 }}</p>
+                    <a href="blogpost/{{post.post_id}}" class="stretched-link">Continue reading</a>
+                </div>
+                <div class="col-md-4 d-flex align-items-center justify-content-center">
+                    <img class="bd-placeholder-img img-fluid" src="/media/{{ post.image }}" alt="{{ post.title }}" />
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+{% endblock %}

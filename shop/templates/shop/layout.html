@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css"
+        integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+
+    <title>{% block title %} {% endblock %}</title>
+    <style>
+        {
+            % block css %
+        }
+
+            {
+            % endblock %
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="/shop">My Awesome Cart</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item active">
+                    <a class="nav-link" href="/shop">Home <span class="sr-only">(current)</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/shop/about">About us</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/shop/tracker">Tracker</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/blog">Blog</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/shop/contact">Contact us</a>
+                </li>
+            </ul>
+            <form class="form-inline my-2 my-lg-0" method="GET" action="/shop/search">
+                <input class="form-control mr-sm-2" type="search" placeholder="Search" name="search" id="search" aria-label="Search">
+                <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
+            </form>
+            <button type="button" id="popcart" class="btn btn-secondary mx-2" data-container="body"
+                data-toggle="popover" data-html="true" data-placement="right"
+                data-content="Vivamus sagittis lacus vel augue laoreet rutrum faucibus.">
+                Cart (<span id="cart">0</span>)
+            </button>
+        </div>
+    </nav>
+
+    {% block body %} {% endblock %}
+
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"
+        integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"
+        integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k"
+        crossorigin="anonymous"></script>
+    <script>
+        var cart = {};
+        console.log("Script loading ...");
+
+        var productsAll = {{ products| safe }};
+        var productsMap = {};
+        var priceMap = {};
+
+        productsAll.forEach(function (product) {
+            productsMap["product_" + product.product_id] = product.product_name;
+            priceMap["product_" + product.product_id] = product.price;
+        });
+
+        function updatePopover() {
+            var popStr = "";
+            popStr = popStr + "<h5> Cart for your items in my shopping cart </h5><div class='mx-2 my-2'>";
+            var i = 1;
+            for (var item in cart) {
+                popStr = popStr + "<b>" + i + "</b>. ";
+                popStr = popStr + productsMap[item].slice(0, 15) + "... Qty: " + cart[item] + '<br>';
+                i = i + 1;
+            }
+            popStr = popStr + "</div><a href='/shop/checkout'><button class='btn btn-primary' id ='checkout'>Checkout</button></a> <button class='btn btn-primary' onclick='clearCart()' id ='clearCart'>Clear Cart</button>"
+            document.getElementById('popcart').setAttribute('data-content', popStr);
+            $('#popcart').popover('show');
+        }
+
+        function clearCart() {
+            cart = JSON.parse(localStorage.getItem('cart'));
+            for (var item in cart) {
+                if (document.getElementById('div' + item) === null) {
+                    continue;
+                }
+                document.getElementById('div' + item).innerHTML = '<button id="' + item + '" class="btn btn-warning cart">Add Cart</button>'
+            }
+            if (document.getElementById("items") !== null) {
+                let content = `<p>Your cart is empty, please add some items to your cart before checking out!</p>`;
+                $('#items').html(content)
+            }
+            if (document.getElementById("totalPrice") !== null) {
+                $('#totalPrice').text(0)
+            }
+            localStorage.clear();
+            cart = {};
+            document.getElementById('cart').innerHTML = calculateSumOfItemsAtCart(cart);
+        }
+
+        function calculateSumOfItemsAtCart(cart) {
+            let sum = 0;
+            for (let key in cart) {
+                if (cart.hasOwnProperty(key)) {
+                    sum += cart[key];
+                }
+            }
+            for (let item in cart) {
+                if (document.getElementById('div' + item) != null && cart[item] != 0) {
+                    document.getElementById('div' + item).innerHTML = "<button id='minus" + item + "' class='btn btn-primary minus'>-</button> <span id='val" + item + "''>" + cart[item] + "</span> <button id='plus" + item + "' class='btn btn-primary plus'> + </button>";
+                }
+                else if (document.getElementById('div' + item) != null && cart[item] == 0) {
+                    delete (cart[item])
+                    document.getElementById('div' + item).innerHTML = "<button id='" + item + "' class='btn btn-warning cart'>Add Cart</button>";
+                }
+                else if (document.getElementById('div' + item) != null) {
+                    document.getElementById('div' + item).innerHTML = "<button id='" + item + "' class='btn btn-warning cart'>Add Cart</button>";
+                }
+            }
+            localStorage.setItem("cart", JSON.stringify(cart))
+            updatePopover()
+            return sum;
+        }
+
+        if (localStorage.getItem("cart") == null) {
+            cart = {}
+        }
+        else {
+            cart = JSON.parse(localStorage.getItem("cart"))
+            document.getElementById('cart').innerHTML = calculateSumOfItemsAtCart(cart);
+        }
+
+        $('.cart').click(function () {
+            var idStr = this.id.toString()
+            console.log(idStr);
+            if (cart[idStr] != undefined) {
+                cart[idStr] += 1
+            }
+            else {
+                cart[idStr] = 1
+            }
+            document.getElementById('cart').innerHTML = calculateSumOfItemsAtCart(cart);
+        });
+
+        $('.divproduct').on("click", "button.minus", function () {
+            a = this.id.slice(13,);
+            cart['product_' + a] = cart['product_' + a] - 1;
+            cart['product_' + a] = Math.max(0, cart['product_' + a]);
+            document.getElementById('cart').innerHTML = calculateSumOfItemsAtCart(cart);
+            if (document.getElementById('valproduct_' + a) != null && cart['product_' + a] != null && cart['product_' + a] > 0) {
+                document.getElementById('valproduct_' + a).innerHTML = cart['product_' + a];
+            }
+        });
+
+        $('.divproduct').on("click", "button.cart", function () {
+            a = this.id.toString()
+            if (cart[a] != undefined) {
+                cart[a] += 1
+            }
+            else {
+                cart[a] = 1
+            }
+            document.getElementById('cart').innerHTML = calculateSumOfItemsAtCart(cart);
+        });
+
+        $('.divproduct').on("click", "button.plus", function () {
+            a = this.id.slice(12,);
+            cart['product_' + a] = cart['product_' + a] + 1;
+            document.getElementById('cart').innerHTML = calculateSumOfItemsAtCart(cart);
+            document.getElementById('valproduct_' + a).innerHTML = cart['product_' + a];
+        });
+
+    </script>
+    {% block js %}{% endblock %}
+</body>
+
+</html>
